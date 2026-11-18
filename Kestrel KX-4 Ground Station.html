@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kestrel KX-4 Ground Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e8eef2;--panel:#f8fafb;--ink:#14232e;--muted:#566a78;--line:#cbd6dd;
+  --accent:#d9480f;--ok:#1f8a5b;--warn:#b86e00;--bad:#c92a2a;
+  --sky:#5aa9e6;--ground:#8c6b4a;--chart-a:#d9480f;--chart-b:#1c6fb8;
+  color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1a22;--panel:#17252f;--ink:#e6eef3;--muted:#92a6b3;--line:#2b3f4c;
+    --accent:#ff8a4c;--ok:#4cc38a;--warn:#f0a63a;--bad:#ff6b6b;
+    --sky:#2f6f9f;--ground:#6b5238;--chart-a:#ff8a4c;--chart-b:#6cb4f0;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1a22;--panel:#17252f;--ink:#e6eef3;--muted:#92a6b3;--line:#2b3f4c;
+  --accent:#ff8a4c;--ok:#4cc38a;--warn:#f0a63a;--bad:#ff6b6b;
+  --sky:#2f6f9f;--ground:#6b5238;--chart-a:#ff8a4c;--chart-b:#6cb4f0;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Barlow Semi Condensed",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 32px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;justify-content:space-between;margin-bottom:16px}
+h1{font-size:1.6rem;margin:0;font-weight:700;letter-spacing:.01em}
+h1 small{display:block;font-size:.95rem;font-weight:500;color:var(--muted)}
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:600;font-size:.95rem;border:2px solid currentColor}
+.m-Landed{color:var(--muted)}.m-Flying{color:var(--ok)}.m-Taking{color:var(--warn)}.m-Returning{color:var(--accent)}.m-Landing{color:var(--warn)}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:600;padding:9px 16px;border-radius:8px;border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer;min-height:44px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--chart-b);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+h2{font-size:1.05rem;margin:0 0 10px;font-weight:600;color:var(--muted)}
+.hero{display:flex;flex-direction:column;align-items:center;gap:10px}
+.hero svg{width:min(100%,340px);height:auto}
+.hdg{font-size:2.2rem;font-weight:700;line-height:1}
+.hdg span{font-size:1rem;color:var(--muted);font-weight:500;margin-left:6px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile .v{font-size:2rem;font-weight:700;line-height:1.1}
+.tile .u{font-size:.95rem;color:var(--muted);font-weight:500;margin-left:4px}
+.tile .l{color:var(--muted);font-size:.95rem}
+.bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:100%;background:var(--ok);transition:width .4s linear,background .4s}
+.bars{display:flex;gap:4px;align-items:flex-end;height:28px;margin-top:6px}
+.bars i{width:10px;border-radius:2px;background:var(--line)}
+.bars i.on{background:var(--ok)}
+.wide{grid-column:1/-1}
+.chartbox{margin-top:16px}
+.legend{display:flex;gap:16px;font-size:.95rem;color:var(--muted);margin-bottom:6px;flex-wrap:wrap}
+.legend b{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+canvas{width:100%;height:190px;display:block}
+.cols{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+#log{list-style:none;margin:0;padding:0;max-height:210px;overflow-y:auto}
+#log li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:12px}
+#log time{color:var(--muted);flex:none}
+#log .warn{color:var(--warn);font-weight:600}
+#log .bad{color:var(--bad);font-weight:600}
+.note{color:var(--muted);font-size:.9rem;margin:14px 0 0}
+#map{height:300px}
+.maphead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 6px;font:inherit;font-size:.9rem;background:var(--bg)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Kestrel KX-4 ground station<small>Simulated telemetry. No real drone is connected.</small></h1>
+    <span id="mode" class="pill m-Landed" role="status">Landed</span>
+    <div class="controls">
+      <button id="bTake" class="primary">Take off</button>
+      <button id="bRth">Return home</button>
+      <button id="bLand">Land now</button>
+      <button id="bReset">Reset</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel hero" aria-label="Attitude indicator">
+      <h2>Attitude</h2>
+      <svg viewBox="0 0 240 240" role="img" aria-label="Artificial horizon showing roll and pitch">
+        <defs><clipPath id="clip"><circle cx="120" cy="120" r="104"/></clipPath></defs>
+        <g clip-path="url(#clip)">
+          <g id="hz">
+            <rect x="-200" y="-400" width="640" height="520" fill="var(--sky)"/>
+            <rect x="-200" y="120" width="640" height="520" fill="var(--ground)"/>
+            <line x1="-200" y1="120" x2="440" y2="120" stroke="#fff" stroke-width="2"/>
+            <g stroke="#fff" stroke-width="2" opacity=".85">
+              <line x1="100" y1="95" x2="140" y2="95"/><line x1="90" y1="70" x2="150" y2="70"/>
+              <line x1="100" y1="145" x2="140" y2="145"/><line x1="90" y1="170" x2="150" y2="170"/>
+            </g>
+          </g>
+        </g>
+        <circle cx="120" cy="120" r="104" fill="none" stroke="var(--ink)" stroke-width="4"/>
+        <path d="M60 120h40l8 10 12-10 12 10 8-10h40" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+        <g id="rollmark"><path d="M120 22l-7 -12h14z" fill="var(--ink)"/></g>
+      </svg>
+      <div class="hdg"><b id="hdg">000</b><span id="card">N</span></div>
+      <div class="l" style="color:var(--muted)">Roll <b id="roll">0</b>° &nbsp; Pitch <b id="pitch">0</b>°</div>
+    </section>
+
+    <div class="tiles">
+      <div class="panel tile"><div class="l">Altitude</div><div><span class="v" id="alt">0</span><span class="u">m</span></div></div>
+      <div class="panel tile"><div class="l">Ground speed</div><div><span class="v" id="spd">0.0</span><span class="u">m/s</span></div></div>
+      <div class="panel tile wide">
+        <div class="l">Battery</div>
+        <div><span class="v" id="bat">100</span><span class="u">%</span> <span class="u" id="eta">Flight time left: --</span></div>
+        <div class="bar"><i id="batbar"></i></div>
+      </div>
+      <div class="panel tile">
+        <div class="l">Signal</div>
+        <div><span class="v" id="sig">100</span><span class="u">%</span></div>
+        <div class="bars" id="sigbars"><i style="height:6px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:28px"></i></div>
+      </div>
+      <div class="panel tile"><div class="l">Distance from home</div><div><span class="v" id="dist">0</span><span class="u">m</span></div></div>
+      <div class="panel tile wide"><div class="l">GPS position</div><div class="v" style="font-size:1.4rem" id="gps">--</div></div>
+    </div>
+  </div>
+
+  <section class="panel chartbox" aria-label="Flight path map">
+    <div class="maphead"><h2>Flight path</h2><span class="l" style="color:var(--muted)">While flying, steer with <kbd>←</kbd> <kbd>→</kbd> and climb or descend with <kbd>↑</kbd> <kbd>↓</kbd></span></div>
+    <canvas id="map" role="img" aria-label="Top-down map of the drone's path around the home point"></canvas>
+  </section>
+
+  <section class="panel chartbox" aria-label="Flight history">
+    <h2>Last 60 seconds</h2>
+    <div class="legend"><span><b style="background:var(--chart-a)"></b>Altitude (m)</span><span><b style="background:var(--chart-b)"></b>Speed (m/s, ×5)</span></div>
+    <canvas id="chart" role="img" aria-label="Line chart of altitude and speed over the last 60 seconds"></canvas>
+  </section>
+
+  <section class="panel cols">
+    <div><h2>Event log</h2><ul id="log" role="log" aria-live="polite"></ul></div>
+  </section>
+  <p class="note">The drone returns home on its own when the battery drops to 20%. Manual steering pauses the autopilot for 8 seconds after your last key press.</p>
+</div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var HOME={lat:47.3769,lon:8.5417};
+  var DT=0.5,HIST=120,s;
+
+  function fresh(){
+    return {mode:"Landed",x:0,y:0,alt:0,spd:0,hdg:0,roll:0,pitch:0,bat:100,sig:100,
+            tH:0,tAlt:60,tSpd:8,next:0,t:0,warned:false,manual:false,altH:[],spdH:[],trail:[]};
+  }
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function angDiff(a,b){return ((b-a+540)%360)-180}
+  function bearingHome(){return (Math.atan2(-s.x,-s.y)*180/Math.PI+360)%360}
+  function dist(){return Math.hypot(s.x,s.y)}
+
+  function log(msg,cls){
+    var li=document.createElement("li"),t=document.createElement("time"),m=document.createElement("span");
+    t.textContent=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    m.textContent=msg; if(cls)m.className=cls;
+    li.appendChild(t);li.appendChild(m);
+    var ul=$("log");ul.insertBefore(li,ul.firstChild);
+    while(ul.children.length>30)ul.removeChild(ul.lastChild);
+  }
+  function setMode(m,msg,cls){s.mode=m;if(msg)log(msg,cls)}
+
+  function step(){
+    s.t+=DT;
+    var pH=s.hdg,pA=s.alt,m=s.mode;
+
+    if(m==="Taking off"){
+      s.alt=Math.min(60,s.alt+4*DT);
+      if(s.alt>=60){s.tAlt=60;setMode("Flying","Reached 60 m. Flying.")}
+    }else if(m==="Flying"){
+      if(s.t>=s.next){s.manual=false;
+        s.tH=(s.hdg+(Math.random()*140-70)+360)%360;
+        s.tAlt=clamp(40+Math.random()*60,30,100);
+        s.tSpd=5+Math.random()*9;
+        s.next=s.t+5+Math.random()*6;
+      }
+      if(dist()>300)s.tH=bearingHome();
+    }else if(m==="Returning"){
+      s.tH=bearingHome();s.tAlt=60;s.tSpd=dist()<25?3:12;
+      if(dist()<4){setMode("Landing","Over home point. Landing.")}
+    }else if(m==="Landing"){
+      s.alt=Math.max(0,s.alt-2.5*DT);s.tSpd=0;
+      if(s.alt<=0){s.alt=0;s.spd=0;setMode("Landed","Touchdown. Motors off.")}
+    }
+
+    if(m==="Flying"||m==="Returning"){
+      s.hdg=(s.hdg+clamp(angDiff(s.hdg,s.tH),-15*DT,15*DT)+360)%360;
+      s.alt+=clamp(s.tAlt-s.alt,-3*DT,3*DT);
+    }
+    if(s.mode!=="Landed"){
+      s.spd+=(s.tSpd-s.spd)*0.25;
+      var r=s.hdg*Math.PI/180;
+      s.x+=Math.sin(r)*s.spd*DT;s.y+=Math.cos(r)*s.spd*DT;
+      s.bat=Math.max(0,s.bat-0.1*DT*2);
+    }else s.spd=0;
+
+    var turn=angDiff(pH,s.hdg)/DT,vz=(s.alt-pA)/DT;
+    s.roll+=(clamp(turn*1.6,-30,30)-s.roll)*0.3;
+    s.pitch+=(clamp(-s.spd*0.9+vz*2,-20,20)-s.pitch)*0.3;
+
+    var target=s.mode==="Landed"&&dist()<5?100:clamp(100-dist()/4.5,8,100);
+    s.sig+=(target+(Math.random()*6-3)-s.sig)*0.3;s.sig=clamp(s.sig,0,100);
+
+    if(s.bat<=20&&!s.warned&&s.mode!=="Landed"){
+      s.warned=true;log("Battery at 20%. Returning home automatically.","warn");
+      if(s.mode==="Flying"||s.mode==="Taking off")s.mode="Returning";
+    }
+    if(s.bat<=5&&s.mode!=="Landed"&&s.mode!=="Landing"){setMode("Landing","Battery critical. Emergency landing.","bad")}
+    if(s.sig<25&&s.mode==="Flying"&&!s.lowSig){s.lowSig=true;log("Weak signal. Consider returning home.","warn")}
+    if(s.sig>=40)s.lowSig=false;
+
+    s.altH.push(s.alt);s.spdH.push(s.spd);
+    if(s.mode!=="Landed"){s.trail.push([s.x,s.y]);if(s.trail.length>600)s.trail.shift()}
+    if(s.altH.length>HIST){s.altH.shift();s.spdH.shift()}
+    render();
+  }
+
+  var CARD=["N","NE","E","SE","S","SW","W","NW"];
+  function render(){
+    var h=Math.round(s.hdg)%360;
+    $("hdg").textContent=String(h).padStart(3,"0");
+    $("card").textContent=CARD[Math.round(h/45)%8];
+    $("roll").textContent=Math.round(s.roll);
+    $("pitch").textContent=Math.round(s.pitch);
+    $("hz").setAttribute("transform","rotate("+(-s.roll)+" 120 120) translate(0 "+(s.pitch*2.2)+")");
+    $("rollmark").setAttribute("transform","rotate("+(-s.roll)+" 120 120)");
+    $("alt").textContent=Math.round(s.alt);
+    $("spd").textContent=s.spd.toFixed(1);
+    $("bat").textContent=Math.round(s.bat);
+    var bb=$("batbar");bb.style.width=s.bat+"%";
+    bb.style.background=s.bat>40?"var(--ok)":s.bat>20?"var(--warn)":"var(--bad)";
+    $("eta").textContent="Flight time left: "+(s.mode==="Landed"&&s.bat===100?"~8 min":Math.round(s.bat/0.2/60*10)/10+" min");
+    $("sig").textContent=Math.round(s.sig);
+    var on=Math.ceil(s.sig/20);
+    [].forEach.call($("sigbars").children,function(b,i){b.className=i<on?"on":""});
+    $("dist").textContent=Math.round(dist());
+    var lat=HOME.lat+s.y/111320,lon=HOME.lon+s.x/(111320*Math.cos(HOME.lat*Math.PI/180));
+    $("gps").textContent=lat.toFixed(5)+"° N, "+lon.toFixed(5)+"° E";
+    var el=$("mode"),key=s.mode.split(" ")[0];
+    el.textContent=s.mode;el.className="pill m-"+key;
+    $("bTake").disabled=s.mode!=="Landed"||s.bat<25;
+    $("bRth").disabled=!(s.mode==="Flying"||s.mode==="Taking off");
+    $("bLand").disabled=!(s.mode==="Flying"||s.mode==="Returning"||s.mode==="Taking off");
+    drawChart();drawMap();
+  }
+
+  function drawMap(){
+    var c=$("map"),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+    if(!w)return;
+    if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
+    var g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+    var cs=getComputedStyle(document.documentElement);
+    var line=cs.getPropertyValue("--line"),mut=cs.getPropertyValue("--muted"),acc=cs.getPropertyValue("--chart-a").trim(),ink=cs.getPropertyValue("--ink").trim();
+    var cx=w/2,cy=h/2,R=Math.min(w,h)/2-12,k=R/320;
+    g.strokeStyle=line;g.lineWidth=1;
+    [80,160,240,320].forEach(function(r){g.beginPath();g.arc(cx,cy,r*k,0,6.283);g.stroke()});
+    g.beginPath();g.moveTo(cx-R,cy);g.lineTo(cx+R,cy);g.moveTo(cx,cy-R);g.lineTo(cx,cy+R);g.stroke();
+    g.fillStyle=mut;g.font="13px system-ui,sans-serif";g.textAlign="left";g.textBaseline="alphabetic";
+    g.fillText("N",cx+5,cy-R+12);g.fillText("Rings every 80 m",8,h-8);
+    if(s.trail.length>1){
+      g.strokeStyle=acc;g.lineWidth=2.5;g.lineJoin="round";g.beginPath();
+      s.trail.forEach(function(p,i){var x=cx+p[0]*k,y=cy-p[1]*k;i?g.lineTo(x,y):g.moveTo(x,y)});
+      g.stroke();
+    }
+    g.fillStyle=ink;g.fillRect(cx-5,cy-5,10,10);
+    g.save();g.translate(cx+s.x*k,cy-s.y*k);g.rotate(s.hdg*Math.PI/180);
+    g.fillStyle=acc;g.strokeStyle=ink;g.lineWidth=1.5;
+    g.beginPath();g.moveTo(0,-10);g.lineTo(7,8);g.lineTo(0,4);g.lineTo(-7,8);g.closePath();g.fill();g.stroke();
+    g.restore();
+  }
+
+  function drawChart(){
+    var c=$("chart"),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+    if(!w)return;
+    if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
+    var g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+    var cs=getComputedStyle(document.documentElement);
+    var line=cs.getPropertyValue("--line"),mut=cs.getPropertyValue("--muted");
+    g.font="13px system-ui,sans-serif";g.textBaseline="middle";
+    var L=34,B=h-8,T=8,H=B-T;
+    g.strokeStyle=line;g.fillStyle=mut;g.lineWidth=1;
+    for(var i=0;i<=4;i++){
+      var y=T+H*i/4;g.beginPath();g.moveTo(L,y);g.lineTo(w,y);g.stroke();
+      g.fillText(String(100-i*25),2,y);
+    }
+    function plot(arr,k,col){
+      if(arr.length<2)return;
+      g.strokeStyle=col;g.lineWidth=2.5;g.lineJoin="round";g.beginPath();
+      arr.forEach(function(v,i){
+        var x=L+(w-L)*(i+(HIST-arr.length))/(HIST-1),y=B-clamp(v*k,0,100)/100*H;
+        i?g.lineTo(x,y):g.moveTo(x,y);
+      });
+      g.stroke();
+    }
+    plot(s.altH,1,cs.getPropertyValue("--chart-a").trim());
+    plot(s.spdH,5,cs.getPropertyValue("--chart-b").trim());
+  }
+
+  $("bTake").onclick=function(){s.warned=false;s.next=0;setMode("Taking off","Motors on. Taking off.");render()};
+  $("bRth").onclick=function(){setMode("Returning","Return to home started.");render()};
+  $("bLand").onclick=function(){setMode("Landing","Landing at current position.");render()};
+  $("bReset").onclick=function(){s=fresh();$("log").innerHTML="";log("Simulation reset. Battery 100%.");render()};
+  window.addEventListener("resize",function(){drawChart();drawMap()});
+  window.addEventListener("keydown",function(e){
+    if(s.mode!=="Flying")return;
+    var k=e.key,used=true;
+    if(k==="ArrowLeft")s.tH=(s.hdg-35+360)%360;
+    else if(k==="ArrowRight")s.tH=(s.hdg+35)%360;
+    else if(k==="ArrowUp")s.tAlt=clamp(s.alt+20,30,120);
+    else if(k==="ArrowDown")s.tAlt=clamp(s.alt-20,30,120);
+    else used=false;
+    if(used){e.preventDefault();if(!s.manual){s.manual=true;log("Manual control. Autopilot paused for 8 s.")}s.next=s.t+8}
+  });
+
+  s=fresh();log("Ground station ready. Press Take off to start.");render();
+  setInterval(step,DT*1000);
+})();
+</script>
+</body>
+</html>
